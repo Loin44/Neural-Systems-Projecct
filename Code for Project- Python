@@ -1,0 +1,158 @@
+-------Data Organization & Processing---------------------------
+
+# Here all the different datasets are being loaded into their specific variables, ie. Vaccination rate of Country, denoted by the variable "vaccination"
+import pandas
+import random as rand
+govspending = pandas.read_csv('Datasets/government_health_spending_of_total_gov_spending_percent.csv') # Government spending on health as percent of total spending, 1994-2009 (By Country)
+life_expectancy = pandas.read_csv('Datasets/life_expectancy_years.csv') # Life-Expectancy of Each Country
+alcohol_consumption = pandas.read_csv('Datasets/alcohol_consumption_per_adult_15plus_litres.csv') # Liters of Alcohol Consumned by Adults in Each Country
+vaccination = pandas.read_csv('Datasets/six_vacc_rate.csv') # % of Population Vaccinated against at least 1 Disease
+
+
+# Fixing Datasets to remove excess rows, so that all the datasets have similar years for signifiance testing later on, these years will be (1993-2009)
+fixed_govspending = govspending.drop(['country'], axis = 1)
+
+fixing_lifexpectancy = life_expectancy.drop(life_expectancy.loc[:,'1799': '1993'].columns, axis = 1) # The .drop() function is used to remove excess rows from the dataset
+# [:, '1799' : '1993'].columns, basically states that any year between and including 1799 and 1993 will be removed from the dataset, this is repeatead with the other datatsets below
+fixed_lifeexpectancy = fixing_lifexpectancy.drop(fixing_lifexpectancy.loc[:, '2010': '2099'].columns, axis = 1)
+fixed_lifeexpectancy = fixed_lifeexpectancy.drop(['country'], axis = 1)
+
+fixing_alcoholconsumption = alcohol_consumption.drop(alcohol_consumption.loc[:,'1984':'1993'].columns, axis = 1)
+fixed_alcoholconsumption = fixing_alcoholconsumption.drop(['country'], axis = 1)
+
+fixing_vaccination = vaccination.drop(['1993'], axis =1 )
+fixed_vaccination = fixing_vaccination.drop(fixing_vaccination.loc[:,'2010' : '2019'].columns, axis = 1)
+fixed_vaccination = fixed_vaccination.drop(['country'], axis = 1)
+
+
+# Converting Datasets into Numpy Arrays and getting rid of non-existing Values wherever they exist in the dataset (NaN values)
+import numpy as np
+govspendingarray = fixed_govspending.to_numpy() # Here we are just converting the dataset from a pandas dataframe into a numpy array, using .to_numpy()
+finalgovspendingarray = govspendingarray[np.isfinite(govspendingarray)] # The np.isfinite function takes any finite value from our previously created array, and places them into a new array which we called finalgovspending array, and because NaN values aren't finite they are removed from the finalgovspending array, this is repeated below for all datasets
+
+vaccinationarray = fixed_vaccination.to_numpy()
+finalvaccinationarray = vaccinationarray[np.isfinite(vaccinationarray)]
+
+alcoholarray = fixed_alcoholconsumption.to_numpy()
+finalalcoholarray = alcoholarray[np.isfinite(alcoholarray)]
+
+
+lifeexpectancyarray = fixed_lifeexpectancy.to_numpy()
+finallifeexpectancyarray = lifeexpectancyarray[np.isfinite(lifeexpectancyarray)]
+
+# Here we are choosing a starting point in each dataset to select datapoints, for our linear regression analysis
+starting_point= rand.randint(0,100) # This selects a random starting point in each dataset, anywhere from 0 to 100
+GovspendingforGraphing = np.zeros(100) # Array to hold Govspending datapoints for linear regression and Graphing
+LifeexpectancyforGraphing = np.zeros(100) # Array to hold Life-Expectancy datapoints for linear regression and Graphing
+AlcoholforGraphing = np.zeros(100) # Array to hold Alcohol Consumption datapoints for linear regression and Graphing
+VaccinationforGraphing = np.zeros(100) # Array to hold Vaccination Rate datapoints for linear regression and Graphing
+for i in range(100):
+    LifeexpectancyforGraphing[i] = finallifeexpectancyarray[starting_point]
+    AlcoholforGraphing[i] = finalalcoholarray[starting_point]
+    GovspendingforGraphing[i] = finalgovspendingarray[starting_point]
+    VaccinationforGraphing[i] = finalvaccinationarray[starting_point]
+    starting_point = starting_point + 1
+# This for loops, takes a value from each dataframe (Alcohol, Vaccination, Govspending, and Life-Expectancy) starting at the starting point, denoted by the variable "starting_point" and ending 100 indices from the starting point, and adds them to the previously created arrays used for graphing and linear regression
+# This allows for each indiviudal datapoint to be related to its subsequent datapoint from another dataset, meaning each datapoint will be from the same country, and not different countries
+
+
+# Here we are performing the linear regression analysis for each variable against life-expectancy
+import statsmodels.api as sm
+Govspending_vs_Lifeexpectancy = sm.OLS(LifeexpectancyforGraphing, GovspendingforGraphing).fit()
+Alcohol_vs_Lifeexpectancy = sm.OLS(LifeexpectancyforGraphing, AlcoholforGraphing).fit()
+Vaccination_vs_Lifeexpectancy = sm.OLS(LifeexpectancyforGraphing, VaccinationforGraphing).fit()
+# the sm.OLS() function allows us to perform linear regression analysis for each variable against life-expectany (the response), the results of this test are shown at the end of the data visualization section
+
+----------------------Data Visualization--------------------------------
+
+# Scatterplot for Government Spending vs Life-Expectancy
+import matplotlib.pyplot as plt
+fontsize = 10 # Variable used to change fontsize later in code so everything looks neat
+fig = plt.figure(figsize=(10,5)) # Sets figure aspect ratio
+ax = plt.axes()
+ax.set_title('Relationship between Government Spending and Life-expectancy', fontsize = fontsize) # Sets title
+ax.set_xlabel('Government Spending on Health as % of Total Spending', fontsize = fontsize) # Sets x-label
+ax.set_ylabel('Life-expectancy in Years', fontsize = fontsize) # Sets y-label
+ax.tick_params(labelsize = fontsize) # Sets the fonts of the ticks to the same font as the labels
+ax.spines['top'].set_visible(False) # Removes top line of graph
+ax.spines['right'].set_visible(False) # Removes right line of graph
+ax.scatter(GovspendingforGraphing, LifeexpectancyforGraphing, color='green') # These are the variables displayed on the scatter plot
+
+# Scatterplot for Alcohol Consumption vs Life-Expectancy
+fig = plt.figure(figsize=(10,5))
+ax = plt.axes()
+ax.set_title('Relationship between Alcohol Consumption and Life-Expectancy', fontsize = fontsize)
+ax.set_xlabel('Alcohol Consumption per Adult (liters)', fontsize = fontsize)
+ax.set_ylabel('Life-expectancy in Years', fontsize = fontsize)
+ax.tick_params(labelsize = fontsize)
+ax.spines['top'].set_visible(False)
+ax.spines['right'].set_visible(False)
+ax.scatter(AlcoholforGraphing, LifeexpectancyforGraphing, color = 'red')
+
+#Scatterplot for Vacction Rate vs Life-Expectancy
+fig = plt.figure(figsize=(10,5))
+ax = plt.axes()
+ax.set_title('Relationship between Vaccination Rate and Life-expectancy', fontsize = fontsize)
+ax.set_xlabel('Vaccination Rate (% of Population)', fontsize = fontsize)
+ax.set_ylabel('Life-expectancy in Years', fontsize = fontsize)
+ax.tick_params(labelsize = fontsize)
+ax.spines['top'].set_visible(False)
+ax.spines['right'].set_visible(False)
+ax.scatter(VaccinationforGraphing, LifeexpectancyforGraphing, color = 'blue')
+
+#Histogram for Residuals of Govspending vs Life-Expectancy
+fig = plt.figure(figsize=(10,5)) # Sets figure Aspect Ratio
+ax = plt.axes()
+bins = np.arange(-30,25,5) # Sets the bins of the histograms, since the maximum vlaue is 20, we want to go in intervals of 5
+ax.set_xticks(np.arange(-30,25,5)) # Sets the ticks of the x-axis, so that the graph is easier to understand
+ax.tick_params(labelsize = fontsize) # Sets ticks size to same as the fontsize
+ax.set_title('Government Spending vs Life-Expectancy Residuals', fontsize = fontsize) # Sets title
+ax.set_xlabel('Residuals', fontsize = fontsize) # Sets x-label
+ax.set_ylabel('Frequency', fontsize = fontsize) # Sets y-label
+ax.spines['top'].set_visible(False) # Removes top line of graph
+ax.spines['right'].set_visible(False) # Removes right line of graph
+ax.hist(Govspending_vs_Lifeexpectancy.resid, bins,  color = 'green') # The .resid function comes from the previously used sm.OLS function, and it provides all the residuals for the stated variables
+
+# Histogram for residuals of Alcohol consumption vs Life-Expectancy
+fig = plt.figure(figsize=(10,5))
+ax = plt.axes()
+bins = np.arange(-30,25,5)
+ax.set_xticks(np.arange(-30,25,5))
+ax.tick_params(labelsize = fontsize)
+ax.set_title('Alcohol Consumption vs Life-Expectancy Residuals', fontsize = fontsize)
+ax.set_xlabel('Residuals', fontsize = fontsize)
+ax.set_ylabel('Frequency', fontsize = fontsize)
+ax.spines['top'].set_visible(False)
+ax.spines['right'].set_visible(False)
+ax.hist(Alcohol_vs_Lifeexpectancy.resid, bins, color = 'red', )
+
+# Histogram for Residuals of Vaccination Rate vs Life-Expectancy
+fig = plt.figure(figsize=(10,5))
+ax = plt.axes()
+bins = np.arange(-30,25,5)
+ax.set_xticks(np.arange(-30,25,5))
+ax.tick_params(labelsize = fontsize)
+ax.set_title('Vaccination Rate vs Life-Expectancy Residuals', fontsize = fontsize)
+ax.set_xlabel('Residuals', fontsize = fontsize)
+ax.set_ylabel('Frequency', fontsize = fontsize)
+ax.spines['top'].set_visible(False)
+ax.spines['right'].set_visible(False)
+ax.hist(Vaccination_vs_Lifeexpectancy.resid, bins, color='blue' )
+
+# Linear Regression for Government Spending vs Life-Expectancy
+GovspendingforGraphing = sm.add_constant(GovspendingforGraphing) # A constant is added so that the slope of the regression provides a better explanation of the relationship between the variables
+Govspending_vs_Lifeexpectancy = sm.OLS(LifeexpectancyforGraphing, GovspendingforGraphing).fit() # The actual code used for linear regression
+LR1 = Govspending_vs_Lifeexpectancy.summary() # Provides summary of the regression analysis
+print(LR1) # Displays regression analysis
+
+# Linear Regression for Alcohol Consumption vs Life-Expectancy
+AlcoholforGraphing = sm.add_constant(AlcoholforGraphing)
+Alcohol_vs_Lifeexpectancy = sm.OLS(LifeexpectancyforGraphing, AlcoholforGraphing).fit()
+LR2 = Alcohol_vs_Lifeexpectancy.summary()
+print(LR2)
+
+# Linear Regression for Vaccination Rate vs Life-Expectancy
+VaccinationforGraphing = sm.add_constant(VaccinationforGraphing)
+Vaccination_vs_Lifeexpectancy = sm.OLS(LifeexpectancyforGraphing, VaccinationforGraphing).fit()
+LR3 = Vaccination_vs_Lifeexpectancy.summary()
+print(LR3)
